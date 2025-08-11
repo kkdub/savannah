@@ -1,0 +1,30 @@
+# app.yaml — DigitalOcean App Platform spec
+name: savannah
+region: nyc
+services:
+  - name: api
+    environment_slug: python
+    instance_size_slug: basic-xxs
+    instance_count: 1
+    github:
+      repo: <your-username>/<your-repo>
+      branch: main
+      deploy_on_push: true
+    build_command: pip install -r requirements.txt
+    run_command: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    http_port: 8080
+    routes:
+      - path: /
+    envs:
+      # App secrets (edit the values in DO console after first import if you prefer)
+      - key: SECRET_KEY
+        value: change-me
+        scope: RUN_TIME
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+        scope: RUN_TIME
+      # DB: start with SQLite file in the app container’s fs.
+      # Later, replace this value with your Managed Postgres connection string.
+      - key: DATABASE_URL
+        value: sqlite:///./savannah.db
+        scope: RUN_TIME

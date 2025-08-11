@@ -5,51 +5,46 @@ from logging.config import fileConfig
 from alembic import context
 from sqlalchemy import engine_from_config, pool
 
-# Load .env for local runs (no-op in prod)
+# Load .env locally; no-op in prod
 try:
-    from dotenv import load_dotenv  # python-dotenv
+    from dotenv import load_dotenv
     load_dotenv()
 except Exception:
     pass
 
-# ── Alembic Config object ───────────────────────────────────────────────────────────────────
+# Alembic Config
 config = context.config
 
-# Inject DB URL from env into alembic.ini’s sqlalchemy.url
+# Set DB URL from env (SQLite locally; Postgres in prod)
 db_url = os.getenv("DATABASE_URL", "sqlite:///./savannah.db")
 config.set_main_option("sqlalchemy.url", db_url)
 
-# Interpret the config file for Python logging.
+# Logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# ── Import your models’ metadata ────────────────────────
-# Adjust ONE of these imports to match your app.
-# Option A: app.database defines Base = declarative_base(); metadata = Base.metadata
-try:
-    from app.database import Base as _Base
-    target_metadata = _Base.metadata
-except Exception:
-    # Option B: app.models defines Base
-    from app.models import Base as _Base  # type: ignore
-    target_metadata = _Base.metadata
+# Target metadata (import Base + ensure models are registered)
+from app.database import Base  # noqa: E402
+from app import models as _models  # noqa: F401,E402  (register tables)
 
-# ── Offline & Online migration runners ───────────────────
+target_metadata = Base.metadata
 
-def run_migrations_offline():
+def run_migrations_offline() -> None:
+    """Run migrations in 'offline' mode."""
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
         url=url,
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
-        compare_type=True,     # detect column type changes
+        compare_type=True,
         compare_server_default=True,
     )
     with context.begin_transaction():
         context.run_migrations()
 
-def run_migrations_online():
+def run_migrations_online() -> None:
+    """Run migrations in 'online' mode."""
     connectable = engine_from_config(
         config.get_section(config.config_ini_section),
         prefix="sqlalchemy.",

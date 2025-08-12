@@ -1,25 +1,11 @@
-# Web framework
-fastapi==0.111.0
-uvicorn[standard]==0.30.1
-
-# Database ORM + driver (SQLite & Postgres support)
+﻿fastapi==0.111.0
+uvicorn==0.30.1
 SQLAlchemy==2.0.31
-psycopg2-binary==2.9.9
-
-# Authentication & password hashing
 passlib[bcrypt]==1.7.4
 python-jose==3.3.0
-
-# Pydantic for data validation
 pydantic==2.8.2
 pydantic-settings==2.2.1
-
-# For migrations (optional but recommended if DB evolves)
 alembic==1.13.2
-
-# Testing
 pytest==8.2.2
 httpx==0.27.0
-
-# Environment variable parsing
 python-dotenv==1.0.1

@@ -1,8 +1,10 @@
 # app/models.py
 from __future__ import annotations
-from datetime import datetime
-from sqlalchemy import String, DateTime, func
-from sqlalchemy.orm import Mapped, mapped_column
+from datetime import datetime, date, timezone
+
+from sqlalchemy import String, DateTime, func, Date, ForeignKey, JSON, Index
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from .database import Base
 
 class User(Base):
@@ -15,9 +17,6 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    from sqlalchemy import DateTime
-from sqlalchemy.orm import Mapped, mapped_column
-from datetime import datetime, timezone
 
 class IngestState(Base):
     __tablename__ = "ingest_state"
@@ -28,12 +27,6 @@ class IngestState(Base):
         nullable=False,
         default=lambda: datetime(1970, 1, 1, tzinfo=timezone.utc)
     )
-    
-    # --- Jobs & Daily Results ---
-
-from sqlalchemy import String, DateTime, Date, ForeignKey, JSON, Index
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import datetime
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -55,9 +48,9 @@ class JobResult(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False)
-    day: Mapped[datetime.date] = mapped_column(Date, index=True, nullable=False)  # the "daily list" tag
+    day: Mapped[date] = mapped_column(Date, index=True, nullable=False)  # the "daily list" tag
     starred: Mapped[bool] = mapped_column(default=False, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     job: Mapped[Job] = relationship(back_populates="results")
 

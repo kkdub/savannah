@@ -1,4 +1,5 @@
 from datetime import date
+import os
 import pytest
 from sqlalchemy.orm import Session
 
@@ -60,3 +61,41 @@ def test_delete_job(client, db_session):
     headers = _auth_headers(client)
     r = client.delete(f"/jobs/{job.id}", headers=headers)
     assert r.status_code == 204
+
+
+def test_filter_word_boundaries_env(monkeypatch, db_session):
+    # Ensure 'go' does not match 'Django' when boundaries required
+    monkeypatch.setenv("FILTER_TITLE_KEYWORDS", "[\"go\"]")
+    monkeypatch.setenv("FILTER_REQUIRE_WORD_BOUNDARIES", "true")
+    from importlib import reload
+    import sys
+    # Ensure project root is on path for dynamic import
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from app import config
+    reload(config)
+    from app.jobs import fetch_jobs as fj
+    reload(fj)
+    j1 = {"job_title": "Senior Django Engineer"}
+    j2 = {"job_title": "Go Developer"}
+    assert fj._passes_local_filters(j1) is False
+    assert fj._passes_local_filters(j2) is True
+
+
+def test_filter_regex_env(monkeypatch, db_session):
+    # Use regex to require 'python' and 'fastapi' in description regardless of order
+    monkeypatch.setenv("FILTER_DESC_REGEX", "[\"python\",\"fastapi\"]")
+    from importlib import reload
+    import sys
+    root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    if root not in sys.path:
+        sys.path.insert(0, root)
+    from app import config
+    reload(config)
+    from app.jobs import fetch_jobs as fj
+    reload(fj)
+    j1 = {"job_title": "Any", "job_description": "We use Python and FastAPI daily"}
+    j2 = {"job_title": "Any", "job_description": "We use Java and Spring"}
+    assert fj._passes_local_filters(j1) is True
+    assert fj._passes_local_filters(j2) is False

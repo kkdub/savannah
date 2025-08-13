@@ -12,6 +12,13 @@ class Settings(BaseSettings):
     FILTER_DESC_KEYWORDS: list[str] = []
     FILTER_COMPANY_DENY: list[str] = []
     FILTER_LOCATION_ALLOW: list[str] = []
+    # Optional regex-based filters (case-insensitive)
+    FILTER_TITLE_REGEX: list[str] = []
+    FILTER_DESC_REGEX: list[str] = []
+    # If true, keyword matching uses word boundaries to avoid partial matches (e.g., 'go' != 'django')
+    FILTER_REQUIRE_WORD_BOUNDARIES: bool = False
+    # Apply server-side filters to TheirStack request (default False = app-side filtering only)
+    FILTER_APPLY_SERVER_SIDE: bool = False
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

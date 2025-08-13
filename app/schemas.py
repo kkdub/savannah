@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from pydantic import BaseModel, EmailStr, Field
 
 class UserCreate(BaseModel):
@@ -29,6 +29,6 @@ class JobOut(BaseModel):
     model_config = {"from_attributes": True}
 
 class JobResultOut(BaseModel):
-    day: datetime
+    day: date
     starred: bool
     job: JobOut

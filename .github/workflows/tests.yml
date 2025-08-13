@@ -1,0 +1,45 @@
+name: tests
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'requirements.txt'
+      - 'pytest.ini'
+      - '.github/workflows/tests.yml'
+  workflow_dispatch:
+    inputs:
+      full:
+        description: 'Run full test suite'
+        required: false
+        default: 'false'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Env for tests (SQLite)
+        run: |
+          echo "DATABASE_URL=sqlite:///./ci_test.db" >> $GITHUB_ENV
+
+      - name: Run smoke tests on PR (fast subset)
+        if: github.event_name == 'pull_request' && inputs.full != 'true'
+        run: |
+          pytest -q -k "health or auth" --maxfail=1
+
+      - name: Run full test suite (manual)
+        if: github.event_name == 'workflow_dispatch' && inputs.full == 'true'
+        run: |
+          pytest -q

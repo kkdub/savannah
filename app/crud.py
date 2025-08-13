@@ -83,3 +83,36 @@ def prune_old_results(db: Session, keep_days: int = 14) -> int:
         )
     )
     return del_results
+
+# Jobs API helpers
+def get_latest_day(db: Session) -> date | None:
+    row = db.execute(select(models.JobResult.day).order_by(models.JobResult.day.desc()).limit(1)).first()
+    return row[0] if row else None
+
+def list_jobs_for_day(db: Session, day: date) -> list[tuple[models.Job, models.JobResult]]:
+    q = (
+        db.query(models.Job, models.JobResult)
+        .join(models.JobResult, models.Job.id == models.JobResult.job_id)
+        .filter(models.JobResult.day == day)
+        .order_by(models.JobResult.created_at.desc())
+    )
+    return q.all()
+
+def set_job_star(db: Session, job_id: int, starred: bool) -> int:
+    rows = (
+        db.query(models.JobResult)
+        .filter(models.JobResult.job_id == job_id)
+        .all()
+    )
+    for jr in rows:
+        jr.starred = starred
+    db.commit()
+    return len(rows)
+
+def delete_job(db: Session, job_id: int) -> bool:
+    job = db.query(models.Job).filter(models.Job.id == job_id).first()
+    if not job:
+        return False
+    db.delete(job)
+    db.commit()
+    return True

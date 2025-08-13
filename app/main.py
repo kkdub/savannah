@@ -1,5 +1,5 @@
 # app/main.py
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import text
 from sqlalchemy.orm import Session
@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from . import crud, models
 from .auth import authenticate_user, get_current_user
 from .database import get_db
-from .schemas import Token, UserCreate, UserOut
+from .schemas import Token, UserCreate, UserOut, JobResultOut
 from .token import create_access_token
 
 app = FastAPI()
@@ -43,3 +43,55 @@ def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get
 @app.get("/me", response_model=UserOut, tags=["auth"])
 def me(current_user: models.User = Depends(get_current_user)):
     return current_user
+
+# Jobs endpoints
+@app.get("/jobs", response_model=list[JobResultOut], tags=["jobs"])
+def list_jobs(
+    day: str | None = Query(None, description="ISO date YYYY-MM-DD; defaults to latest day"),
+    db: Session = Depends(get_db),
+    _: models.User = Depends(get_current_user),
+):
+    from datetime import date
+    if day:
+        try:
+            target_day = date.fromisoformat(day)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid day format; expected YYYY-MM-DD")
+    else:
+        latest = crud.get_latest_day(db)
+        if not latest:
+            return []
+        target_day = latest
+
+    rows = crud.list_jobs_for_day(db, target_day)
+    results: list[JobResultOut] = []
+    for job, jr in rows:
+        results.append(
+            JobResultOut(
+                day=jr.day,
+                starred=jr.starred,
+                job=job,
+            )
+        )
+    return results
+
+@app.post("/jobs/{job_id}/star", status_code=204, tags=["jobs"])
+def star_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    updated = crud.set_job_star(db, job_id, True)
+    if updated == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return None
+
+@app.post("/jobs/{job_id}/unstar", status_code=204, tags=["jobs"])
+def unstar_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    updated = crud.set_job_star(db, job_id, False)
+    if updated == 0:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return None
+
+@app.delete("/jobs/{job_id}", status_code=204, tags=["jobs"])
+def delete_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    ok = crud.delete_job(db, job_id)
+    if not ok:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return None

@@ -1,4 +1,4 @@
-from jose import jwt
+import jwt
 from app.token import create_access_token
 from app.config import settings
 

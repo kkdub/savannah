@@ -1,6 +1,6 @@
 # app/token.py
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+import jwt
 from .config import settings
 
 def create_access_token(subject: str) -> str:

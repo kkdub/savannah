@@ -20,6 +20,20 @@ from .database import get_db
 from .models import JobResult
 from .schemas import JobResultOut
 
+from fastapi import Depends, HTTPException
+from sqlalchemy.orm import Session
+from .database import get_db
+from .config import settings
+from .jobs.fetch_jobs import build_payload  # reuse the exact builder
+
+@app.get("/debug/theirstack-payload")
+def debug_theirstack_payload(db: Session = Depends(get_db)):
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+    return build_payload(db)  # returns the JSON payload
+
+
+
 app = FastAPI()
 
 @app.get("/health", tags=["monitoring"])

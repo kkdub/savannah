@@ -1,0 +1,15 @@
+{
+  "order_by": [{ "field": "date_posted", "desc": true }],
+  "limit": 50,
+  "posted_at_max_age_days": 1,
+
+  "job_location_pattern_or": ["remote"],
+  "job_country_code_or": ["US", "CH", "LU", "NO", "DK", "SG", "AU"],
+
+  "company_name_not": ["IBM", "Capgemini"],
+
+  "include_total_results": false,
+
+  "job_title_include_file": "Job Titles.txt",
+  "job_title_exclude_file": "Job Title Exclude.txt"
+}

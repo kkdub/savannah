@@ -32,3 +32,28 @@ class JobResultOut(BaseModel):
     day: date
     starred: bool
     job: JobOut
+    
+    from datetime import date, datetime
+from pydantic import BaseModel
+
+class JobOut(BaseModel):
+    id: int
+    external_id: str
+    title: str
+    company: str | None = None
+    location: str | None = None
+    url: str | None = None
+    posted_at: datetime | None = None
+    discovered_at: datetime | None = None
+
+    class Config:
+        from_attributes = True
+
+class JobResultOut(BaseModel):
+    id: int
+    day: date
+    starred: bool
+    job: JobOut
+
+    class Config:
+        from_attributes = True

@@ -10,6 +10,16 @@ from .database import get_db
 from .schemas import Token, UserCreate, UserOut, JobResultOut
 from .token import create_access_token
 
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
+from sqlalchemy import select
+from sqlalchemy.orm import Session, joinedload
+from fastapi import Depends, Query, HTTPException, Path
+
+from .database import get_db
+from .models import JobResult
+from .schemas import JobResultOut
+
 app = FastAPI()
 
 @app.get("/health", tags=["monitoring"])
@@ -95,3 +105,49 @@ def delete_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depe
     if not ok:
         raise HTTPException(status_code=404, detail="Job not found")
     return None
+
+@app.get("/jobs", response_model=list[JobResultOut])
+def list_jobs(
+    day: date | None = Query(None, description="YYYY-MM-DD; defaults to today (America/New_York)"),
+    limit: int = Query(100, ge=1, le=500),
+    db: Session = Depends(get_db),
+):
+    # Default to "today" in ET
+    if day is None:
+        day = datetime.now(ZoneInfo("America/New_York")).date()
+
+    stmt = (
+        select(JobResult)
+        .options(joinedload(JobResult.job))
+        .where(JobResult.day == day)
+        .order_by(JobResult.id.desc())
+        .limit(limit)
+    )
+    rows = db.execute(stmt).scalars().all()
+    return rows
+
+@app.patch("/jobs/{job_result_id}/star", response_model=JobResultOut)
+def star_job_result(
+    job_result_id: int = Path(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    jr = db.get(JobResult, job_result_id)
+    if not jr:
+        raise HTTPException(status_code=404, detail="JobResult not found")
+    jr.starred = True
+    db.commit()
+    db.refresh(jr)
+    return jr
+
+@app.patch("/jobs/{job_result_id}/unstar", response_model=JobResultOut)
+def unstar_job_result(
+    job_result_id: int = Path(..., ge=1),
+    db: Session = Depends(get_db),
+):
+    jr = db.get(JobResult, job_result_id)
+    if not jr:
+        raise HTTPException(status_code=404, detail="JobResult not found")
+    jr.starred = False
+    db.commit()
+    db.refresh(jr)
+    return jr

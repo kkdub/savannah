@@ -15,21 +15,19 @@ jobs:
 fetch-jobs:
 runs-on: ubuntu-latest
 
-```
-steps:
-- name: Trigger Job Fetching
-  run: |
-    curl -X POST \
-      "${{ secrets.APP_URL }}/cron/fetch-jobs?cron_secret=${{ secrets.SECRET_KEY }}" \
-      --fail-with-body
-  
-- name: Check Status
-  if: success()
-  run: echo "✅ Job fetching completed successfully"
-  
-- name: Handle Failure  
-  if: failure()
-  run: |
-    echo "❌ Job fetching failed"
-    exit 1
-```
+    steps:
+    - name: Trigger Job Fetching
+      run: |
+        curl -X POST \
+          "${{ secrets.APP_URL }}/cron/fetch-jobs?cron_secret=${{ secrets.SECRET_KEY }}" \
+          --fail-with-body
+      
+    - name: Check Status
+      if: success()
+      run: echo "✅ Job fetching completed successfully"
+      
+    - name: Handle Failure  
+      if: failure()
+      run: |
+        echo "❌ Job fetching failed"
+        exit 1

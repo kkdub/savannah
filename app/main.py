@@ -1,40 +1,28 @@
 # app/main.py
-from fastapi import Depends, FastAPI, HTTPException, Query, status
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Path
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import text
-from sqlalchemy.orm import Session
+from sqlalchemy import text, select
+from sqlalchemy.orm import Session, joinedload
+from datetime import datetime, date
+from zoneinfo import ZoneInfo
 
 from . import crud, models
 from .auth import authenticate_user, get_current_user
 from .database import get_db
 from .schemas import Token, UserCreate, UserOut, JobResultOut
 from .token import create_access_token
-
-from datetime import datetime, date
-from zoneinfo import ZoneInfo
-from sqlalchemy import select
-from sqlalchemy.orm import Session, joinedload
-from fastapi import Depends, Query, HTTPException, Path
-
-from .database import get_db
 from .models import JobResult
-from .schemas import JobResultOut
-
-from fastapi import Depends, HTTPException
-from sqlalchemy.orm import Session
-from .database import get_db
 from .config import settings
-from .jobs.fetch_jobs import build_payload  # reuse the exact builder
+from .jobs.fetch_jobs import build_payload
+
+
+app = FastAPI()
 
 @app.get("/debug/theirstack-payload")
 def debug_theirstack_payload(db: Session = Depends(get_db)):
     if not settings.DEBUG:
         raise HTTPException(status_code=404, detail="Not found")
     return build_payload(db)  # returns the JSON payload
-
-
-
-app = FastAPI()
 
 @app.get("/health", tags=["monitoring"])
 def health_check(db: Session = Depends(get_db)):
@@ -120,52 +108,11 @@ def delete_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depe
         raise HTTPException(status_code=404, detail="Job not found")
     return None
 
-@app.get("/jobs", response_model=list[JobResultOut])
-def list_jobs(
-    day: date | None = Query(None, description="YYYY-MM-DD; defaults to today (America/New_York)"),
-    limit: int = Query(100, ge=1, le=500),
-    db: Session = Depends(get_db),
-):
-    # Default to "today" in ET
-    if day is None:
-        day = datetime.now(ZoneInfo("America/New_York")).date()
-
-    stmt = (
-        select(JobResult)
-        .options(joinedload(JobResult.job))
-        .where(JobResult.day == day)
-        .order_by(JobResult.id.desc())
-        .limit(limit)
-    )
-    rows = db.execute(stmt).scalars().all()
-    return rows
-
-@app.patch("/jobs/{job_result_id}/star", response_model=JobResultOut)
-def star_job_result(
-    job_result_id: int = Path(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    jr = db.get(JobResult, job_result_id)
-    if not jr:
-        raise HTTPException(status_code=404, detail="JobResult not found")
-    jr.starred = True
-    db.commit()
-    db.refresh(jr)
-    return jr
-
-@app.patch("/jobs/{job_result_id}/unstar", response_model=JobResultOut)
-def unstar_job_result(
-    job_result_id: int = Path(..., ge=1),
-    db: Session = Depends(get_db),
-):
-    jr = db.get(JobResult, job_result_id)
-    if not jr:
-        raise HTTPException(status_code=404, detail="JobResult not found")
-    jr.starred = False
-    db.commit()
-    db.refresh(jr)
-    return jr
+@app.post("/cron/fetch-jobs", tags=["cron"])
+def fetch_jobs_cron(cron_secret: str = Query(...), db: Session = Depends(get_db)):
+    if cron_secret != settings.SECRET_KEY:
+        raise HTTPException(status_code=401, detail="Invalid cron secret")
     
-    <antArtifact identifier=“fixed_main_py”​​​​​​​​​​​​​​​​
-    
-    
+    from .jobs.fetch_jobs import fetch_and_save_jobs
+    fetch_and_save_jobs(db)
+    return {"status": "success", "message": "Jobs fetched successfully"}

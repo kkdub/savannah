@@ -4,9 +4,10 @@
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2>Job Dashboard</h2>
+    <h2>New Jobs</h2>
     <div>
         <button class="btn btn-outline-warning me-2" onclick="showSavedJobs()">⭐ View Saved</button>
+        <button class="btn btn-outline-secondary me-2" onclick="showAllJobs()">Show All</button>
         <button class="btn btn-success me-2" onclick="fetchNewJobs()">Pull New Jobs</button>
         <button class="btn btn-primary" onclick="fetchJobs()">Refresh Display</button>
     </div>
@@ -21,9 +22,9 @@
     </div>
     <div class="col-md-4">
         <select class="form-control" id="starredFilter" onchange="filterJobs()">
-            <option value="">All Jobs</option>
-            <option value="starred">⭐ Starred Only</option>
-            <option value="unstarred">Unstarred Only</option>
+            <option value="unstarred">New Jobs (Default)</option>
+            <option value="starred">⭐ Saved Jobs</option>
+            <option value="">Show All Jobs</option>
         </select>
     </div>
 </div>
@@ -189,6 +190,18 @@ function showSavedJobs() {
     filterJobs();
 }
 
+function showAllJobs() {
+    document.getElementById('starredFilter').value = '';
+    document.querySelector('h2').textContent = 'All Jobs';
+    filterJobs();
+}
+
+function showNewJobs() {
+    document.getElementById('starredFilter').value = 'unstarred';
+    document.querySelector('h2').textContent = 'New Jobs';
+    filterJobs();
+}
+
 function filterJobs() {
     const dateFilter = document.getElementById('dateFilter').value;
     const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
@@ -233,6 +246,13 @@ document.addEventListener('DOMContentLoaded', function() {
     if (filterParam === 'starred') {
         document.getElementById('starredFilter').value = 'starred';
         document.querySelector('h2').textContent = 'Saved Jobs';
+    } else if (filterParam === 'all') {
+        document.getElementById('starredFilter').value = '';
+        document.querySelector('h2').textContent = 'All Jobs';
+    } else {
+        // Default to showing unstarred (new) jobs
+        document.getElementById('starredFilter').value = 'unstarred';
+        document.querySelector('h2').textContent = 'New Jobs';
     }
     
     fetchJobs();

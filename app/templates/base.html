@@ -12,8 +12,9 @@
             <a class="navbar-brand" href="/">Savannah Jobs</a>
             <div class="navbar-nav ms-auto">
                 {% if current_user %}
-                    <a class="nav-link" href="/dashboard">All Jobs</a>
+                    <a class="nav-link" href="/dashboard">New Jobs</a>
                     <a class="nav-link" href="/dashboard?filter=starred">Saved Jobs</a>
+                    <a class="nav-link" href="/dashboard?filter=all">All Jobs</a>
                     <a class="nav-link" href="/logout">Logout</a>
                 {% else %}
                     <a class="nav-link" href="/login">Login</a>

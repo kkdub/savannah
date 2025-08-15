@@ -1,0 +1,37 @@
+# .github/workflows/fetch-jobs.yml
+
+name: Daily Job Fetching
+
+on:
+schedule:
+# Run at 6 AM EST (11 AM UTC) every day
+- cron: ‘0 11 * * *’
+
+# Allow manual triggering for testing
+
+workflow_dispatch:
+
+jobs:
+fetch-jobs:
+runs-on: ubuntu-latest
+
+```
+steps:
+- name: Trigger Job Fetching
+  run: |
+    curl -X POST \
+      -H "Content-Type: application/json" \
+      -H "Authorization: Bearer ${{ secrets.API_SECRET_KEY }}" \
+      ${{ secrets.APP_URL }}/fetch-jobs \
+      --fail-with-body
+  
+- name: Check Status
+  if: success()
+  run: echo "✅ Job fetching completed successfully"
+  
+- name: Handle Failure  
+  if: failure()
+  run: |
+    echo "❌ Job fetching failed"
+    exit 1
+```

@@ -20,9 +20,7 @@ steps:
 - name: Trigger Job Fetching
   run: |
     curl -X POST \
-      -H "Content-Type: application/json" \
-      -H "Authorization: Bearer ${{ secrets.API_SECRET_KEY }}" \
-      ${{ secrets.APP_URL }}/fetch-jobs \
+      "${{ secrets.APP_URL }}/cron/fetch-jobs?cron_secret=${{ secrets.SECRET_KEY }}" \
       --fail-with-body
   
 - name: Check Status

@@ -44,27 +44,27 @@ def health_check(db: Session = Depends(get_db)):
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail="Database connection error"
         )
 
-@app.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["auth"])
-def register(payload: UserCreate, db: Session = Depends(get_db)):
+@app.post("/api/register", response_model=UserOut, status_code=status.HTTP_201_CREATED, tags=["auth"])
+def register_api(payload: UserCreate, db: Session = Depends(get_db)):
     if crud.get_user_by_email(db, payload.email):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
     user = crud.create_user(db, payload.email, payload.password)
     return user
 
-@app.post("/login", response_model=Token, tags=["auth"])
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+@app.post("/api/login", response_model=Token, tags=["auth"])
+def login_api(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
     user = authenticate_user(db, form.username, form.password)
     if not user:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     token = create_access_token(subject=user.email)
     return {"access_token": token, "token_type": "bearer"}
 
-@app.get("/me", response_model=UserOut, tags=["auth"])
+@app.get("/api/me", response_model=UserOut, tags=["auth"])
 def me(current_user: models.User = Depends(get_current_user)):
     return current_user
 
 # Jobs endpoints
-@app.get("/jobs", response_model=list[JobResultOut], tags=["jobs"])
+@app.get("/api/jobs", response_model=list[JobResultOut], tags=["jobs"])
 def list_jobs(
     day: str | None = Query(None, description="ISO date YYYY-MM-DD; defaults to latest day"),
     db: Session = Depends(get_db),
@@ -94,21 +94,21 @@ def list_jobs(
         )
     return results
 
-@app.post("/jobs/{job_id}/star", status_code=204, tags=["jobs"])
+@app.post("/api/jobs/{job_id}/star", status_code=204, tags=["jobs"])
 def star_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     updated = crud.set_job_star(db, job_id, True)
     if updated == 0:
         raise HTTPException(status_code=404, detail="Job not found")
     return None
 
-@app.post("/jobs/{job_id}/unstar", status_code=204, tags=["jobs"])
+@app.post("/api/jobs/{job_id}/unstar", status_code=204, tags=["jobs"])
 def unstar_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     updated = crud.set_job_star(db, job_id, False)
     if updated == 0:
         raise HTTPException(status_code=404, detail="Job not found")
     return None
 
-@app.delete("/jobs/{job_id}", status_code=204, tags=["jobs"])
+@app.delete("/api/jobs/{job_id}", status_code=204, tags=["jobs"])
 def delete_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
     ok = crud.delete_job(db, job_id)
     if not ok:

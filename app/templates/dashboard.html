@@ -54,7 +54,7 @@ let allJobs = [];
 
 async function fetchJobs() {
     try {
-        const response = await fetch('/jobs', {
+        const response = await fetch('/api/jobs', {
             headers: {
                 'Authorization': `Bearer ${authToken}`
             }
@@ -114,7 +114,7 @@ function displayJobs(jobs) {
 
 async function toggleStar(jobId, isStarred) {
     try {
-        const endpoint = isStarred ? `/jobs/${jobId}/unstar` : `/jobs/${jobId}/star`;
+        const endpoint = isStarred ? `/api/jobs/${jobId}/unstar` : `/api/jobs/${jobId}/star`;
         const response = await fetch(endpoint, {
             method: 'POST',
             headers: {

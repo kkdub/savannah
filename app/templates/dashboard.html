@@ -1,0 +1,171 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Savannah Jobs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Job Dashboard</h2>
+    <button class="btn btn-primary" onclick="fetchJobs()">Refresh Jobs</button>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-4">
+        <input type="date" class="form-control" id="dateFilter" onchange="filterJobs()">
+    </div>
+    <div class="col-md-4">
+        <input type="text" class="form-control" placeholder="Search jobs..." id="searchFilter" onkeyup="filterJobs()">
+    </div>
+    <div class="col-md-4">
+        <select class="form-control" id="starredFilter" onchange="filterJobs()">
+            <option value="">All Jobs</option>
+            <option value="starred">Starred Only</option>
+            <option value="unstarred">Unstarred Only</option>
+        </select>
+    </div>
+</div>
+
+<div id="jobsContainer">
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading jobs...</p>
+    </div>
+</div>
+
+<script>
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+let authToken = getCookie('access_token')?.replace('Bearer ', '');
+let allJobs = [];
+
+async function fetchJobs() {
+    try {
+        const response = await fetch('/jobs', {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch jobs');
+        }
+        
+        allJobs = await response.json();
+        displayJobs(allJobs);
+    } catch (error) {
+        document.getElementById('jobsContainer').innerHTML = 
+            '<div class="alert alert-danger">Error loading jobs: ' + error.message + '</div>';
+    }
+}
+
+function displayJobs(jobs) {
+    const container = document.getElementById('jobsContainer');
+    
+    if (jobs.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No jobs found.</div>';
+        return;
+    }
+    
+    const jobsHtml = jobs.map(jobResult => {
+        const job = jobResult.job;
+        const starIcon = jobResult.starred ? '★' : '☆';
+        const starClass = jobResult.starred ? 'text-warning' : 'text-muted';
+        
+        return `
+            <div class="card mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title">${job.title}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">${job.company || 'Unknown Company'}</h6>
+                            <p class="card-text">
+                                <small class="text-muted">
+                                    📍 ${job.location || 'Location not specified'} | 
+                                    📅 ${jobResult.day} |
+                                    🔗 <a href="${job.url}" target="_blank">View Job</a>
+                                </small>
+                            </p>
+                        </div>
+                        <button class="btn btn-link ${starClass}" onclick="toggleStar(${job.id}, ${jobResult.starred})">
+                            <span style="font-size: 1.5em;">${starIcon}</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    container.innerHTML = jobsHtml;
+}
+
+async function toggleStar(jobId, isStarred) {
+    try {
+        const endpoint = isStarred ? `/jobs/${jobId}/unstar` : `/jobs/${jobId}/star`;
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            fetchJobs(); // Refresh the jobs list
+        }
+    } catch (error) {
+        console.error('Error toggling star:', error);
+    }
+}
+
+function filterJobs() {
+    const dateFilter = document.getElementById('dateFilter').value;
+    const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+    const starredFilter = document.getElementById('starredFilter').value;
+    
+    let filteredJobs = allJobs.filter(jobResult => {
+        const job = jobResult.job;
+        
+        // Date filter
+        if (dateFilter && jobResult.day !== dateFilter) {
+            return false;
+        }
+        
+        // Search filter
+        if (searchFilter) {
+            const searchText = `${job.title} ${job.company} ${job.location}`.toLowerCase();
+            if (!searchText.includes(searchFilter)) {
+                return false;
+            }
+        }
+        
+        // Starred filter
+        if (starredFilter === 'starred' && !jobResult.starred) {
+            return false;
+        }
+        if (starredFilter === 'unstarred' && jobResult.starred) {
+            return false;
+        }
+        
+        return true;
+    });
+    
+    displayJobs(filteredJobs);
+}
+
+// Load jobs when page loads
+document.addEventListener('DOMContentLoaded', fetchJobs);
+</script>
+{% endblock %}

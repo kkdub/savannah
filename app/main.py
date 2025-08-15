@@ -1,6 +1,8 @@
 # app/main.py
-from fastapi import Depends, FastAPI, HTTPException, Query, status, Path
+from fastapi import Depends, FastAPI, HTTPException, Query, status, Path, Request, Form
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy import text, select
 from sqlalchemy.orm import Session, joinedload
 from datetime import datetime, date
@@ -17,20 +19,11 @@ from .jobs.fetch_jobs import build_payload
 
 
 app = FastAPI()
+templates = Jinja2Templates(directory="app/templates")
 
-@app.get("/")
-def read_root():
-    return {
-        "message": "Savannah Job API",
-        "status": "running",
-        "endpoints": {
-            "health": "/health",
-            "register": "/register",
-            "login": "/login",
-            "jobs": "/jobs",
-            "docs": "/docs"
-        }
-    }
+@app.get("/", response_class=HTMLResponse)
+def read_root(request: Request):
+    return RedirectResponse(url="/login", status_code=302)
 
 @app.get("/debug/theirstack-payload")
 def debug_theirstack_payload(db: Session = Depends(get_db)):
@@ -130,3 +123,62 @@ def fetch_jobs_cron(cron_secret: str = Query(...), db: Session = Depends(get_db)
     from .jobs.fetch_jobs import fetch_and_save_jobs
     fetch_and_save_jobs(db)
     return {"status": "success", "message": "Jobs fetched successfully"}
+
+# Frontend Routes
+@app.get("/login", response_class=HTMLResponse)
+def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.post("/login", response_class=HTMLResponse)
+def login_form(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = authenticate_user(db, username, password)
+    if not user:
+        return templates.TemplateResponse("login.html", {
+            "request": request, 
+            "messages": [{"type": "danger", "content": "Invalid email or password"}]
+        })
+    
+    token = create_access_token(subject=user.email)
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
+    return response
+
+@app.get("/register", response_class=HTMLResponse)
+def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+@app.post("/register", response_class=HTMLResponse)
+def register_form(request: Request, email: str = Form(...), password: str = Form(...), confirm_password: str = Form(...), db: Session = Depends(get_db)):
+    if password != confirm_password:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "messages": [{"type": "danger", "content": "Passwords do not match"}]
+        })
+    
+    if len(password) < 8:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "messages": [{"type": "danger", "content": "Password must be at least 8 characters"}]
+        })
+    
+    if crud.get_user_by_email(db, email):
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "messages": [{"type": "danger", "content": "Email already registered"}]
+        })
+    
+    user = crud.create_user(db, email, password)
+    return templates.TemplateResponse("register.html", {
+        "request": request,
+        "messages": [{"type": "success", "content": "Account created successfully! Please login."}]
+    })
+
+@app.get("/dashboard", response_class=HTMLResponse)
+def dashboard_page(request: Request):
+    return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/logout")
+def logout():
+    response = RedirectResponse(url="/login", status_code=302)
+    response.delete_cookie(key="access_token")
+    return response

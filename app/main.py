@@ -18,6 +18,20 @@ from .jobs.fetch_jobs import build_payload
 
 app = FastAPI()
 
+@app.get("/")
+def read_root():
+    return {
+        "message": "Savannah Job API",
+        "status": "running",
+        "endpoints": {
+            "health": "/health",
+            "register": "/register",
+            "login": "/login",
+            "jobs": "/jobs",
+            "docs": "/docs"
+        }
+    }
+
 @app.get("/debug/theirstack-payload")
 def debug_theirstack_payload(db: Session = Depends(get_db)):
     if not settings.DEBUG:

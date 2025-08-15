@@ -21,6 +21,13 @@ from .jobs.fetch_jobs import build_payload
 app = FastAPI()
 templates = Jinja2Templates(directory="app/templates")
 
+# Initialize database on startup
+@app.on_event("startup")
+async def startup_event():
+    from .database import engine, Base
+    # Create tables if they don't exist
+    Base.metadata.create_all(bind=engine)
+
 @app.get("/", response_class=HTMLResponse)
 def read_root(request: Request):
     return RedirectResponse(url="/login", status_code=302)

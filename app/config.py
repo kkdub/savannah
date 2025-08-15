@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     FILTER_LOCATION_ALLOW: List[str] = Field(default_factory=list)
 
     # Target countries for job search (defaults to high-wage markets)
-    FILTER_TARGET_COUNTRIES: List[str] = Field(default_factory=lambda: ["US", "CH", "LU", "NO", "DK", "SG", "AU"])
+    FILTER_TARGET_COUNTRIES: List[str] = Field(default=["US", "CH", "LU", "NO", "DK", "SG", "AU"])
 
     # Salary filtering (USD) - CRITICAL for management roles
     FILTER_MIN_SALARY_USD: Optional[int] = 120000

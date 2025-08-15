@@ -57,77 +57,61 @@ def _default_discovered_gte_iso(last_fetch: datetime | None) -> str:
 def build_payload(db: Session) -> dict:
     discovered_gte = _default_discovered_gte_iso(get_last_fetch(db))
 
-    # Base payload with agreed server‑side filters
+    # Base payload with CORRECT TheirStack API parameters (verified from API docs)
     payload: dict = {
-        "limit": 50,  # agreed
+        "limit": 50,
         "order_by": [{"field": "date_posted", "desc": True}],
-        "posted_at_max_age_days": 1,  # agreed (last 1 day)
+        "posted_at_max_age_days": 1,
         "discovered_at_gte": discovered_gte,
-        "job_location_pattern_or": ["remote"],  # agreed
-        "job_country_code_or": HIGH_WAGE_COUNTRIES,  # agreed
-        "company_name_not": ["IBM", "Capgemini"],  # agreed
+        "remote": True,  # ✅ CORRECT: Boolean flag for remote jobs
+        "job_country_code_or": settings.FILTER_TARGET_COUNTRIES,  # ✅ ISO2 country codes
+        "min_salary_usd": settings.FILTER_MIN_SALARY_USD,  # ✅ Salary filtering
+        "max_salary_usd": settings.FILTER_MAX_SALARY_USD,  # ✅ Salary filtering
+        "min_employee_count": settings.FILTER_MIN_EMPLOYEE_COUNT,  # ✅ Company size
         "include_total_results": False,
     }
-    
-    def build_payload(db: Session) -> dict:
-discovered_gte = _default_discovered_gte_iso(get_last_fetch(db))
 
-```
-# Base payload with CORRECT TheirStack API parameters (verified from API docs)
-payload: dict = {
-    "limit": 50,
-    "order_by": [{"field": "date_posted", "desc": True}],
-    "posted_at_max_age_days": 1,
-    "discovered_at_gte": discovered_gte,
-    "remote": True,  # ✅ CORRECT: Boolean flag for remote jobs
-    "job_country_code_or": settings.FILTER_TARGET_COUNTRIES,  # ✅ ISO2 country codes
-    "min_salary_usd": settings.FILTER_MIN_SALARY_USD,  # ✅ Salary filtering
-    "max_salary_usd": settings.FILTER_MAX_SALARY_USD,  # ✅ Salary filtering
-    "min_employee_count": settings.FILTER_MIN_EMPLOYEE_COUNT,  # ✅ Company size
-    "include_total_results": False,
-}
+    # Add max employee count only if specified
+    if settings.FILTER_MAX_EMPLOYEE_COUNT is not None:
+        payload["max_employee_count"] = settings.FILTER_MAX_EMPLOYEE_COUNT
 
-# Add max employee count only if specified
-if settings.FILTER_MAX_EMPLOYEE_COUNT is not None:
-    payload["max_employee_count"] = settings.FILTER_MAX_EMPLOYEE_COUNT
+    # Read include/exclude titles from text files (fallback)
+    include_titles = _read_lines_strip(INCLUDE_TITLES_FILE)
+    exclude_titles = _read_lines_strip(EXCLUDE_TITLES_FILE)
 
-# Read include/exclude titles from text files (fallback)
-include_titles = _read_lines_strip(INCLUDE_TITLES_FILE)
-exclude_titles = _read_lines_strip(EXCLUDE_TITLES_FILE)
+    if settings.FILTER_APPLY_SERVER_SIDE:
+        # ✅ CORRECT: Title exact matches (job_title_or)
+        title_keywords = settings.FILTER_TITLE_KEYWORDS or include_titles
+        if title_keywords:
+            payload["job_title_or"] = title_keywords
 
-if settings.FILTER_APPLY_SERVER_SIDE:
-    # ✅ CORRECT: Title exact matches (job_title_or)
-    title_keywords = settings.FILTER_TITLE_KEYWORDS or include_titles
-    if title_keywords:
-        payload["job_title_or"] = title_keywords
+        # ✅ CORRECT: Title regex patterns (job_title_pattern_or)
+        title_patterns = list(settings.FILTER_TITLE_REGEX) if settings.FILTER_TITLE_REGEX else []
+        
+        # ✅ CORRECT: Title exclusions (job_title_pattern_not)
+        exclude_list = settings.FILTER_TITLE_EXCLUDE or exclude_titles
+        if exclude_list:
+            payload["job_title_pattern_not"] = exclude_list
+        
+        # Add regex patterns if any
+        if title_patterns:
+            payload["job_title_pattern_or"] = title_patterns
 
-    # ✅ CORRECT: Title regex patterns (job_title_pattern_or)
-    title_patterns = list(settings.FILTER_TITLE_REGEX) if settings.FILTER_TITLE_REGEX else []
-    
-    # ✅ CORRECT: Title exclusions (job_title_pattern_not)
-    exclude_list = settings.FILTER_TITLE_EXCLUDE or exclude_titles
-    if exclude_list:
-        payload["job_title_pattern_not"] = exclude_list
-    
-    # Add regex patterns if any
-    if title_patterns:
-        payload["job_title_pattern_or"] = title_patterns
-
-    # ✅ CORRECT: Description patterns (job_description_pattern_or)
-    if settings.FILTER_DESC_KEYWORDS:
-        # Convert keywords to regex with word boundaries if needed
-        desc_patterns = []
-        for keyword in settings.FILTER_DESC_KEYWORDS:
-            if settings.FILTER_REQUIRE_WORD_BOUNDARIES:
-                desc_patterns.append(f"\\b{re.escape(keyword)}\\b")
-            else:
-                desc_patterns.append(re.escape(keyword))
-        payload["job_description_pattern_or"] = desc_patterns
-    
-    # Add explicit regex patterns for descriptions
-    if settings.FILTER_DESC_REGEX:
-        existing_desc = payload.get("job_description_pattern_or", [])
-        payload["job_description_pattern_or"] = existing_desc + list(settings.FILTER_DESC_REGEX)
+        # ✅ CORRECT: Description patterns (job_description_pattern_or)
+        if settings.FILTER_DESC_KEYWORDS:
+            # Convert keywords to regex with word boundaries if needed
+            desc_patterns = []
+            for keyword in settings.FILTER_DESC_KEYWORDS:
+                if settings.FILTER_REQUIRE_WORD_BOUNDARIES:
+                    desc_patterns.append(f"\\b{re.escape(keyword)}\\b")
+                else:
+                    desc_patterns.append(re.escape(keyword))
+            payload["job_description_pattern_or"] = desc_patterns
+        
+        # Add explicit regex patterns for descriptions
+        if settings.FILTER_DESC_REGEX:
+            existing_desc = payload.get("job_description_pattern_or", [])
+            payload["job_description_pattern_or"] = existing_desc + list(settings.FILTER_DESC_REGEX)
 
     # ✅ CORRECT: Company exclusions (company_name_not)
     company_blacklist = ["IBM", "Capgemini"]  # Hardcoded base list
@@ -136,8 +120,7 @@ if settings.FILTER_APPLY_SERVER_SIDE:
     if company_blacklist:
         payload["company_name_not"] = company_blacklist
 
-return payload
-```
+    return payload
 
 
 # ---------- Local post‑fetch filtering (unchanged) ----------

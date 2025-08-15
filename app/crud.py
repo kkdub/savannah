@@ -116,3 +116,42 @@ def delete_job(db: Session, job_id: int) -> bool:
     db.delete(job)
     db.commit()
     return True
+
+def mark_job_applied(db: Session, job_id: int) -> bool:
+    """Mark a job as applied and set the applied_at timestamp"""
+    rows = (
+        db.query(models.JobResult)
+        .filter(models.JobResult.job_id == job_id)
+        .all()
+    )
+    if not rows:
+        return False
+    
+    from datetime import datetime, timezone
+    applied_time = datetime.now(timezone.utc)
+    
+    for jr in rows:
+        jr.applied_at = applied_time
+        jr.starred = False  # Remove from starred when applied
+    
+    db.commit()
+    return True
+
+def list_applied_jobs(db: Session) -> list[tuple[models.Job, models.JobResult]]:
+    """Get all applied jobs ordered by application date (newest first)"""
+    rows = (
+        db.query(models.Job, models.JobResult)
+        .join(models.JobResult)
+        .filter(models.JobResult.applied_at.isnot(None))
+        .order_by(models.JobResult.applied_at.desc())
+        .all()
+    )
+    return rows
+
+def get_applied_jobs_count(db: Session) -> int:
+    """Get count of applied jobs"""
+    return (
+        db.query(models.JobResult)
+        .filter(models.JobResult.applied_at.isnot(None))
+        .count()
+    )

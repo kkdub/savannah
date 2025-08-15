@@ -154,9 +154,14 @@ function displayJobs(jobs) {
                                 </small>
                             </p>
                         </div>
-                        <button class="btn btn-link ${starClass}" onclick="toggleStar(${job.id}, ${jobResult.starred})">
-                            <span style="font-size: 1.5em;">${starIcon}</span>
-                        </button>
+                        <div class="d-flex flex-column align-items-end">
+                            <button class="btn btn-link ${starClass}" onclick="toggleStar(${job.id}, ${jobResult.starred})">
+                                <span style="font-size: 1.5em;">${starIcon}</span>
+                            </button>
+                            <button class="btn btn-success btn-sm mt-1" onclick="markApplied(${job.id})">
+                                ✅ Applied
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -181,6 +186,39 @@ async function toggleStar(jobId, isStarred) {
         }
     } catch (error) {
         console.error('Error toggling star:', error);
+    }
+}
+
+async function markApplied(jobId) {
+    if (!confirm('Mark this job as applied? This will remove it from your job lists and add it to your applied jobs archive.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/jobs/${jobId}/apply`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (response.ok) {
+            // Show success message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.innerHTML = `
+                ✅ Job marked as applied! <a href="/applied" class="alert-link">View your applied jobs</a>
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            document.querySelector('.container').insertBefore(alertDiv, document.querySelector('h2').parentNode);
+            
+            // Refresh the job list to remove the applied job
+            fetchJobs();
+        } else {
+            throw new Error('Failed to mark job as applied');
+        }
+    } catch (error) {
+        alert('Error marking job as applied: ' + error.message);
     }
 }
 

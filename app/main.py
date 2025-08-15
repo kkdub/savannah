@@ -85,13 +85,17 @@ def list_jobs(
     rows = crud.list_jobs_for_day(db, target_day)
     results: list[JobResultOut] = []
     for job, jr in rows:
-        results.append(
-            JobResultOut(
-                day=jr.day,
-                starred=jr.starred,
-                job=job,
+        # Exclude applied jobs from main job listings
+        if jr.applied_at is None:
+            results.append(
+                JobResultOut(
+                    id=jr.id,
+                    day=jr.day,
+                    starred=jr.starred,
+                    applied_at=jr.applied_at,
+                    job=job,
+                )
             )
-        )
     return results
 
 @app.post("/api/jobs/{job_id}/star", status_code=204, tags=["jobs"])
@@ -124,6 +128,31 @@ def fetch_jobs_manual(db: Session = Depends(get_db), _: models.User = Depends(ge
         return {"status": "success", "message": "Successfully pulled new jobs from TheirStack API"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to fetch jobs: {str(e)}")
+
+@app.post("/api/jobs/{job_id}/apply", status_code=204, tags=["jobs"])
+def mark_job_applied(job_id: int, db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    """Mark a job as applied with timestamp"""
+    success = crud.mark_job_applied(db, job_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return None
+
+@app.get("/api/applied-jobs", response_model=list[JobResultOut], tags=["jobs"])
+def list_applied_jobs(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    """Get all applied jobs with timestamps"""
+    rows = crud.list_applied_jobs(db)
+    results: list[JobResultOut] = []
+    for job, jr in rows:
+        results.append(
+            JobResultOut(
+                id=jr.id,
+                day=jr.day,
+                starred=jr.starred,
+                applied_at=jr.applied_at,
+                job=job,
+            )
+        )
+    return results
 
 @app.post("/cron/fetch-jobs", tags=["cron"])
 def fetch_jobs_cron(cron_secret: str = Query(...), db: Session = Depends(get_db)):
@@ -186,6 +215,10 @@ def register_form(request: Request, email: str = Form(...), password: str = Form
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request):
     return templates.TemplateResponse("dashboard.html", {"request": request})
+
+@app.get("/applied", response_class=HTMLResponse)
+def applied_jobs_page(request: Request):
+    return templates.TemplateResponse("applied.html", {"request": request})
 
 @app.get("/logout")
 def logout():

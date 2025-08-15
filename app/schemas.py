@@ -33,6 +33,7 @@ class JobResultOut(BaseModel):
     id: int
     day: date
     starred: bool
+    applied_at: datetime | None
     job: JobOut
 
     model_config = {"from_attributes": True}

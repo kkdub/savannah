@@ -1,0 +1,213 @@
+{% extends "base.html" %}
+
+{% block title %}Applied Jobs - Savannah Jobs{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2>Applied Jobs</h2>
+    <div>
+        <button class="btn btn-outline-primary me-2" onclick="window.print()">🖨️ Print List</button>
+        <button class="btn btn-primary" onclick="fetchAppliedJobs()">Refresh</button>
+    </div>
+</div>
+
+<div class="row mb-3">
+    <div class="col-md-6">
+        <input type="text" class="form-control" placeholder="Search applications..." id="searchFilter" onkeyup="filterAppliedJobs()">
+    </div>
+    <div class="col-md-6">
+        <input type="month" class="form-control" id="monthFilter" onchange="filterAppliedJobs()">
+    </div>
+</div>
+
+<div id="appliedJobsContainer">
+    <div class="text-center">
+        <div class="spinner-border" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading applied jobs...</p>
+    </div>
+</div>
+
+<!-- Print-specific styles -->
+<style>
+@media print {
+    .btn, .form-control, .navbar, .spinner-border {
+        display: none !important;
+    }
+    
+    .container {
+        max-width: none !important;
+        padding: 0 !important;
+    }
+    
+    .applied-job-card {
+        break-inside: avoid;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        padding: 10px;
+    }
+    
+    .applied-date {
+        font-weight: bold;
+        color: #000 !important;
+    }
+    
+    h2 {
+        color: #000 !important;
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    
+    .job-title {
+        font-weight: bold;
+        font-size: 16px;
+        color: #000 !important;
+    }
+    
+    .company-name {
+        font-size: 14px;
+        color: #333 !important;
+    }
+    
+    .job-details {
+        font-size: 12px;
+        color: #666 !important;
+    }
+}
+
+@media screen {
+    .applied-job-card {
+        transition: transform 0.2s;
+    }
+    
+    .applied-job-card:hover {
+        transform: translateY(-2px);
+    }
+}
+</style>
+
+<script>
+let authToken = getCookie('access_token')?.replace('Bearer ', '');
+let allAppliedJobs = [];
+
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+async function fetchAppliedJobs() {
+    try {
+        const response = await fetch('/api/applied-jobs', {
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch applied jobs');
+        }
+        
+        allAppliedJobs = await response.json();
+        displayAppliedJobs(allAppliedJobs);
+    } catch (error) {
+        document.getElementById('appliedJobsContainer').innerHTML = 
+            '<div class="alert alert-danger">Error loading applied jobs: ' + error.message + '</div>';
+    }
+}
+
+function displayAppliedJobs(jobs) {
+    const container = document.getElementById('appliedJobsContainer');
+    
+    if (jobs.length === 0) {
+        container.innerHTML = '<div class="alert alert-info">No applied jobs found. Start applying to jobs to track your applications here!</div>';
+        return;
+    }
+    
+    const jobsHtml = jobs.map(jobResult => {
+        const job = jobResult.job;
+        const appliedDate = new Date(jobResult.applied_at).toLocaleDateString();
+        const appliedTime = new Date(jobResult.applied_at).toLocaleTimeString();
+        
+        return `
+            <div class="card mb-3 applied-job-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <h5 class="card-title job-title">${job.title}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted company-name">${job.company || 'Unknown Company'}</h6>
+                            <p class="card-text job-details">
+                                <small class="text-muted">
+                                    📍 ${job.location || 'Location not specified'} | 
+                                    📅 Posted: ${jobResult.day} |
+                                    🔗 <a href="${job.url}" target="_blank">View Job</a>
+                                </small>
+                            </p>
+                        </div>
+                        <div class="text-end">
+                            <div class="applied-date text-success">
+                                <strong>✅ Applied</strong><br>
+                                <small>${appliedDate}<br>${appliedTime}</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    
+    // Add summary at the top
+    const summary = `
+        <div class="alert alert-success mb-4">
+            <h4>📊 Application Summary</h4>
+            <p><strong>Total Applications:</strong> ${jobs.length}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}</p>
+        </div>
+    `;
+    
+    container.innerHTML = summary + jobsHtml;
+}
+
+function filterAppliedJobs() {
+    const searchFilter = document.getElementById('searchFilter').value.toLowerCase();
+    const monthFilter = document.getElementById('monthFilter').value;
+    
+    let filteredJobs = allAppliedJobs.filter(jobResult => {
+        const job = jobResult.job;
+        
+        // Search filter
+        if (searchFilter) {
+            const searchText = `${job.title} ${job.company} ${job.location}`.toLowerCase();
+            if (!searchText.includes(searchFilter)) {
+                return false;
+            }
+        }
+        
+        // Month filter
+        if (monthFilter) {
+            const appliedMonth = new Date(jobResult.applied_at).toISOString().slice(0, 7); // YYYY-MM
+            if (appliedMonth !== monthFilter) {
+                return false;
+            }
+        }
+        
+        return true;
+    });
+    
+    displayAppliedJobs(filteredJobs);
+}
+
+// Load applied jobs when page loads
+document.addEventListener('DOMContentLoaded', fetchAppliedJobs);
+</script>
+{% endblock %}

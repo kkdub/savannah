@@ -50,6 +50,7 @@ class JobResult(Base):
     job_id: Mapped[int] = mapped_column(ForeignKey("jobs.id", ondelete="CASCADE"), index=True, nullable=False)
     day: Mapped[date] = mapped_column(Date, index=True, nullable=False)  # the "daily list" tag
     starred: Mapped[bool] = mapped_column(default=False, nullable=False)
+    applied_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc))
 
     job: Mapped[Job] = relationship(back_populates="results")

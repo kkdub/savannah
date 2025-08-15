@@ -1,6 +1,6 @@
 # Savannah
 
-Prototype for a secure resume-driven job-search assistant.
+Holly prototype for a highly pereonized resume-driven job-search assistant.
 
 ## Getting Started
 

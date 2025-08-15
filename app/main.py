@@ -115,13 +115,23 @@ def delete_job(job_id: int, db: Session = Depends(get_db), _: models.User = Depe
         raise HTTPException(status_code=404, detail="Job not found")
     return None
 
+@app.post("/api/fetch-jobs", tags=["jobs"])
+def fetch_jobs_manual(db: Session = Depends(get_db), _: models.User = Depends(get_current_user)):
+    """Manual job fetch endpoint for authenticated users"""
+    try:
+        from .jobs.fetch_jobs import fetch_and_store_jobs
+        fetch_and_store_jobs()
+        return {"status": "success", "message": "Successfully pulled new jobs from TheirStack API"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch jobs: {str(e)}")
+
 @app.post("/cron/fetch-jobs", tags=["cron"])
 def fetch_jobs_cron(cron_secret: str = Query(...), db: Session = Depends(get_db)):
     if cron_secret != settings.SECRET_KEY:
         raise HTTPException(status_code=401, detail="Invalid cron secret")
     
-    from .jobs.fetch_jobs import fetch_and_save_jobs
-    fetch_and_save_jobs(db)
+    from .jobs.fetch_jobs import fetch_and_store_jobs
+    fetch_and_store_jobs()
     return {"status": "success", "message": "Jobs fetched successfully"}
 
 # Frontend Routes

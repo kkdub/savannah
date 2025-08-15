@@ -5,7 +5,10 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h2>Job Dashboard</h2>
-    <button class="btn btn-primary" onclick="fetchJobs()">Refresh Jobs</button>
+    <div>
+        <button class="btn btn-success me-2" onclick="fetchNewJobs()">Pull New Jobs</button>
+        <button class="btn btn-primary" onclick="fetchJobs()">Refresh Display</button>
+    </div>
 </div>
 
 <div class="row mb-3">
@@ -69,6 +72,55 @@ async function fetchJobs() {
     } catch (error) {
         document.getElementById('jobsContainer').innerHTML = 
             '<div class="alert alert-danger">Error loading jobs: ' + error.message + '</div>';
+    }
+}
+
+async function fetchNewJobs() {
+    const button = document.querySelector('button[onclick="fetchNewJobs()"]');
+    const originalText = button.textContent;
+    
+    try {
+        button.textContent = 'Pulling Jobs...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/fetch-jobs', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to fetch new jobs from API');
+        }
+        
+        const result = await response.json();
+        
+        // Show success message
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-success alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            ${result.message || 'Successfully pulled new jobs!'}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('h2').parentNode);
+        
+        // Refresh the job list after a short delay
+        setTimeout(() => {
+            fetchJobs();
+        }, 2000);
+        
+    } catch (error) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = 'alert alert-danger alert-dismissible fade show';
+        alertDiv.innerHTML = `
+            Error pulling new jobs: ${error.message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        document.querySelector('.container').insertBefore(alertDiv, document.querySelector('h2').parentNode);
+    } finally {
+        button.textContent = originalText;
+        button.disabled = false;
     }
 }
 

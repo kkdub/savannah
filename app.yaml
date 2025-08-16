@@ -23,7 +23,11 @@ services:
       - key: ACCESS_TOKEN_EXPIRE_MINUTES
         value: "60"
         scope: RUN_TIME
-      # DB: start with SQLite file in the app container’s fs.
+      # TheirStack API key for job fetching (set the real value in DO console)
+      - key: THEIRSTACK_API_KEY
+        value: your_theirstack_api_key_here
+        scope: RUN_TIME
+      # DB: start with SQLite file in the app container's fs.
       # Later, replace this value with your Managed Postgres connection string.
       - key: DATABASE_URL
         value: sqlite:///./savannah.db

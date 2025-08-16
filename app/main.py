@@ -38,6 +38,22 @@ def debug_theirstack_payload(db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Not found")
     return build_payload(db)  # returns the JSON payload
 
+@app.get("/debug/auth")
+def debug_auth(request: Request, db: Session = Depends(get_db)):
+    if not settings.DEBUG:
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    from .auth import get_token_from_cookie_or_header
+    token = get_token_from_cookie_or_header(request)
+    
+    return {
+        "has_cookie": "access_token" in request.cookies,
+        "cookie_value": request.cookies.get("access_token", "None")[:50] + "..." if request.cookies.get("access_token") else None,
+        "has_auth_header": "Authorization" in request.headers,
+        "extracted_token": token[:20] + "..." if token else None,
+        "token_length": len(token) if token else 0
+    }
+
 @app.get("/health", tags=["monitoring"])
 def health_check(db: Session = Depends(get_db)):
     """

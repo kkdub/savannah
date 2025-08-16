@@ -59,6 +59,7 @@ let allJobs = [];
 
 async function fetchJobs() {
     try {
+        console.log('Fetching jobs with token:', authToken ? 'Token present' : 'No token');
         const response = await fetch('/api/jobs', {
             headers: {
                 'Authorization': `Bearer ${authToken}`
@@ -72,8 +73,23 @@ async function fetchJobs() {
         allJobs = await response.json();
         displayJobs(allJobs);
     } catch (error) {
+        console.error('Error fetching jobs:', error);
+        let errorMessage = error.message;
+        
+        if (error.message.includes('Failed to fetch')) {
+            if (!authToken) {
+                errorMessage = 'Authentication required. Please refresh the page and log in again.';
+            } else {
+                errorMessage = 'Unable to connect to the server. Please check your connection and try again.';
+            }
+        }
+        
         document.getElementById('jobsContainer').innerHTML = 
-            '<div class="alert alert-danger">Error loading jobs: ' + error.message + '</div>';
+            `<div class="alert alert-danger">
+                <h4>Error loading jobs</h4>
+                <p>${errorMessage}</p>
+                <button class="btn btn-primary" onclick="fetchJobs()">Try Again</button>
+            </div>`;
     }
 }
 
@@ -130,7 +146,13 @@ function displayJobs(jobs) {
     const container = document.getElementById('jobsContainer');
     
     if (jobs.length === 0) {
-        container.innerHTML = '<div class="alert alert-info">No jobs found.</div>';
+        container.innerHTML = `
+            <div class="alert alert-info">
+                <h4>No jobs found!</h4>
+                <p>Get started by clicking the <strong>"Pull New Jobs"</strong> button above to fetch the latest job postings from TheirStack API.</p>
+                <p>Make sure you have set the <code>THEIRSTACK_API_KEY</code> environment variable.</p>
+            </div>
+        `;
         return;
     }
     

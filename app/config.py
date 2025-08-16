@@ -8,6 +8,7 @@ from typing import List, Optional
 class Settings(BaseSettings):
     # — Core —
     SECRET_KEY: str = Field("change-me", description="JWT signing key")
+    ALGORITHM: str = Field("HS256", description="JWT algorithm")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = Field(60, ge=5, le=60 * 24)
     DEBUG: bool = True  # set False in prod
 

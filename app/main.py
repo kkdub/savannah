@@ -9,7 +9,7 @@ from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from . import crud, models
-from .auth import authenticate_user, get_current_user
+from .auth import authenticate_user, get_current_user, get_current_user_api
 from .database import get_db
 from .schemas import Token, UserCreate, UserOut, JobResultOut
 from .token import create_access_token
@@ -213,11 +213,12 @@ def register_form(request: Request, email: str = Form(...), password: str = Form
             "messages": [{"type": "danger", "content": "Email already registered"}]
         })
     
+    # Create user and auto-login
     user = crud.create_user(db, email, password)
-    return templates.TemplateResponse("register.html", {
-        "request": request,
-        "messages": [{"type": "success", "content": "Account created successfully! Please login."}]
-    })
+    token = create_access_token(subject=user.email)
+    response = RedirectResponse(url="/dashboard", status_code=302)
+    response.set_cookie(key="access_token", value=f"Bearer {token}", httponly=True)
+    return response
 
 @app.get("/dashboard", response_class=HTMLResponse)
 def dashboard_page(request: Request):
